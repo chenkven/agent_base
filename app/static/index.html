@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Agent 底座演示</title>
+  <style>
+    :root { font-family: system-ui, sans-serif; color: #182234; background: #f4f7fb; }
+    body { margin: 0; padding: 24px; }
+    main { max-width: 760px; margin: auto; background: white; border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px #18223412; }
+    h1 { margin: 0 0 6px; font-size: 24px; }
+    p { margin: 0 0 20px; color: #596579; }
+    label { display: block; margin: 12px 0 6px; font-weight: 600; }
+    input, textarea { box-sizing: border-box; width: 100%; padding: 11px; border: 1px solid #c8d0dd; border-radius: 8px; font: inherit; }
+    textarea { min-height: 100px; resize: vertical; }
+    button { margin-top: 12px; background: #2659cb; color: white; border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; cursor: pointer; }
+    button:disabled { opacity: .55; cursor: wait; }
+    #new-chat { background: #e9eef8; color: #182234; margin-left: 8px; }
+    #messages { margin-top: 20px; display: grid; gap: 12px; }
+    .message { white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; border-radius: 10px; background: #f2f5fa; }
+    .message.user { background: #e9f0ff; }
+    .message.error { background: #fff0ef; color: #a1271f; }
+    .who { font-weight: 700; margin-bottom: 5px; }
+    #status { margin-top: 10px; min-height: 22px; color: #596579; }
+  </style>
+</head>
+<body>
+  <main>
+    <h1>Agent 底座演示</h1>
+    <p>输入访问口令后即可与 Agent 对话。口令仅在当前页面内存中使用。</p>
+    <form id="chat-form">
+      <label for="token">访问口令</label>
+      <input id="token" type="password" autocomplete="off" required>
+      <label for="message">消息</label>
+      <textarea id="message" maxlength="4000" required placeholder="例如：你好，请介绍一下你能做什么"></textarea>
+      <button id="send" type="submit">发送</button>
+      <button id="new-chat" type="button">新会话</button>
+    </form>
+    <div id="status" role="status" aria-live="polite"></div>
+    <div id="messages" aria-live="polite"></div>
+  </main>
+  <script>
+    const form = document.getElementById("chat-form");
+    const token = document.getElementById("token");
+    const message = document.getElementById("message");
+    const send = document.getElementById("send");
+    const status = document.getElementById("status");
+    const messages = document.getElementById("messages");
+    let sessionId = null;
+
+    function addMessage(who, content, kind) {
+      const box = document.createElement("div");
+      box.className = "message " + kind;
+      const heading = document.createElement("div");
+      heading.className = "who";
+      heading.textContent = who;
+      const text = document.createElement("div");
+      text.textContent = content;
+      box.append(heading, text);
+      messages.append(box);
+    }
+
+    document.getElementById("new-chat").addEventListener("click", () => {
+      sessionId = null;
+      messages.replaceChildren();
+      status.textContent = "已开始新会话";
+      message.focus();
+    });
+
+    form.addEventListener("submit", async (event) => {
+      event.preventDefault();
+      const prompt = message.value.trim();
+      if (!prompt) return;
+      addMessage("你", prompt, "user");
+      message.value = "";
+      send.disabled = true;
+      status.textContent = "Agent 正在处理…";
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "X-Access-Token": token.value },
+          body: JSON.stringify({ message: prompt, session_id: sessionId })
+        });
+        const result = await response.json();
+        if (!response.ok) throw new Error(result.detail || `请求失败 (${response.status})`);
+        sessionId = result.session_id;
+        addMessage("Agent", result.answer, "agent");
+        status.textContent = "完成";
+      } catch (error) {
+        addMessage("错误", error.message, "error");
+        status.textContent = "请求失败";
+      } finally {
+        send.disabled = false;
+        message.focus();
+      }
+    });
+  </script>
+</body>
+</html>

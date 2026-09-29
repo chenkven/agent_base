@@ -1,6 +1,48 @@
 # DeepSeek Harness Agent 底座
 
-这是一个方便复用的 Python 命令行项目，实际 Agent 循环、工具、会话和权限由[DeepSeek Harness 官方 Python SDK](https://deepseek-harness.github.io/deepseek-harness/en/guide/python-sdk)提供。项目使用官方 `sdk` profile；写一个新 Agent 时，可以复用这里的启动代码，更换模型配置，并逐步加入插件配置。
+这是一个方便复用的 Python Agent 项目，命令行和网页服务都调用[DeepSeek Harness 官方 Python SDK](https://deepseek-harness.github.io/deepseek-harness/en/guide/python-sdk)。命令行使用 `sdk` profile；网页演示使用独立的 `sdk-minimal` profile，并关闭 shell 工具。
+
+## 给导师使用的网页服务
+
+本机启动（PowerShell，当前位置为项目根目录）：
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+先在本机 `.env` 中设置 `DEEPSEEK_API_KEY` 和自己生成的 `SERVICE_ACCESS_TOKEN`。可以用下面的命令生成访问口令，复制结果填入 `.env`；不要把真实口令提交到代码仓库。
+
+```powershell
+.\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+然后启动服务：
+
+```powershell
+.\.venv\Scripts\python.exe -m uvicorn app.web:app --host 127.0.0.1 --port 8000
+```
+
+在本机浏览器打开 <http://127.0.0.1:8000/>，输入访问口令即可聊天。`/health` 返回 `{"status":"ok"}` 只表示网页服务已启动；能否聊天还取决于 Key 和服务器到 DeepSeek 的网络连接。`127.0.0.1` 仅供本机访问，不能作为给导师的公网地址。
+
+### 部署到 Render，取得公网地址
+
+仓库已提供 `render.yaml` 和 `.python-version`。需要你自己的 GitHub 账号和 Render 账号：
+
+1. 当前项目的远程仓库在 Gitee。把项目同步到**你自己的** GitHub、GitLab 或 Bitbucket 仓库，供 Render 连接。确认 `.env`、`.venv`、`.harness` 等没有上传。
+2. 在 [Render Dashboard](https://dashboard.render.com/) 选择 **New → Blueprint**，连接该仓库，使用仓库中的 `render.yaml`。
+3. 按界面提示填写 `DEEPSEEK_API_KEY` 和 `SERVICE_ACCESS_TOKEN` 两个环境变量。访问口令可用上面的 Python 命令生成；只把口令发给导师，不要把 API Key 发给导师。
+4. 等待部署成功，打开 Render 提供的 `https://...onrender.com/` 地址，输入访问口令发送一条消息。验证完成后，把这个网址和访问口令发给导师。
+
+Render 免费服务闲置 15 分钟后会休眠，再次打开通常需要约一分钟唤醒；本地会话文件在休眠、重启和重新部署后会丢失，因此网页演示的长对话不能保证跨重启续接。网页入口一次只处理一个 Agent 请求。若需要持续在线和永久保存会话，需要升级托管方案并配置持久存储。
+
+网页服务代码在 `app/web.py`，页面在 `app/static/index.html`，网页专用的 Harness 配置在 `app/web_chat.patch.yml`。网页使用 `workspace-web/` 和 `.harness-web/`，与命令行数据隔离。要添加 RAG 等服务能力，可在 `app/web.py` 的调用流程中接入检索，或谨慎调整网页专用 profile；命令行的插件仍在 `config/*.patch.yml` 配置。
+
+网页接口的本地自动测试：
+
+```powershell
+.\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+.\.venv\Scripts\python.exe -m unittest tests.test_web -v
+```
 
 ## 目录关系
 
