@@ -1,0 +1,7 @@
+.venv/
+.env
+.harness/
+__pycache__/
+*.py[cod]
+workspace/*
+!workspace/.gitkeep
