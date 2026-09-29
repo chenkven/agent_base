@@ -1,0 +1,5 @@
+# Public demo: keep the SDK's chat/session loop but do not expose shell tools.
+- id: persistent-bash
+  disabled: true
+- id: persistent-pwsh
+  disabled: true

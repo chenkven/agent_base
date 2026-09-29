@@ -1,0 +1,10 @@
+.venv/
+.idea/
+.env
+.harness/
+.harness-web/
+workspace-web/
+__pycache__/
+*.py[cod]
+workspace/*
+!workspace/.gitkeep
