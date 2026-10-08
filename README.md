@@ -81,17 +81,32 @@ Copy-Item .env.example .env
 
 网页测试使用并清理**独立测试库**，不要把 `MYSQL_TEST_DATABASE` 指向业务库。完整测试包含真实 DeepSeek API 冒烟测试：配置 `DEEPSEEK_API_KEY` 后会调用模型并可能产生费用；未配置时该项跳过。只运行网页接口测试可执行 `\.venv\Scripts\python.exe -m unittest tests.test_web -v`。
 
-## 代码结构
+## 目录与调用关系
 
-| 路径 | 职责 |
-| --- | --- |
-| `main.py`、`app/cli.py` | `doctor`、单次任务和连续命令行对话。 |
-| `app/web.py`、`app/static/` | FastAPI 接口，以及登录、聊天、引擎和工作流页面。 |
-| `app/permissions.py`、`app/platform.py`、`app/user_capabilities.py` | 账号、模型、Agent、公共及个人能力授权。 |
-| `app/engines.py`、`config/engines.json` | DSH 引擎目录、可用性检查及会话版本绑定。 |
-| `app/workflows.py`、`app/workflow_runner.py` | 工作流定义、步骤校验、执行及运行记录。 |
-| `app/extensions.py`、`app/agent.py` | 生成 DSH 能力补丁并创建 SDK 实例。 |
-| `mysql/`、`scripts/`、`tests/` | 数据库脚本、演示与维护脚本、自动测试。 |
+```text
+agent_base/
+├─ main.py                    命令行入口
+├─ app/
+│  ├─ cli.py                  doctor / run / chat
+│  ├─ web.py                  FastAPI 页面和接口
+│  ├─ permissions.py          登录、账号、会话归属
+│  ├─ rate_limit.py           登录失败限流
+│  ├─ platform.py             模型目录、Agent、公共能力和授权
+│  ├─ user_capabilities.py    个人能力及 MCP 审核
+│  ├─ engines.py              DSH 引擎目录和会话版本绑定
+│  ├─ workflows.py            工作流定义及运行记录
+│  ├─ workflow_runner.py      工作流逐步执行
+│  ├─ extensions.py           生成 Skill、MCP 配置补丁
+│  ├─ agent.py                创建 DeepSeek Harness SDK 实例
+│  ├─ demo_mcp.py             内置演示 MCP 服务
+│  └─ static/                 登录、聊天、引擎和工作流页面
+├─ config/                    DSH 引擎目录及可选配置补丁
+├─ mysql/                     全新建库与升级迁移 SQL
+├─ scripts/                   建库、演示和本地维护脚本
+└─ tests/                     接口、权限、能力和 SDK 测试
+```
+
+网页请求从 `app/web.py` 进入，经 `permissions.py`、`platform.py` 等模块检查权限；普通聊天通过 `extensions.py` 配置能力，再由 `agent.py` 调用 DSH。工作流先由 `workflows.py` 校验定义，再由 `workflow_runner.py` 顺序调用 Agent 或 MCP 工具。
 
 网页工作区和 DSH 数据分别位于 `workspace-web/`、`.harness-web/`；命令行使用 `workspace/`、`.harness/`。这些运行目录和 `.env` 均被 Git 忽略。扩展补丁的格式与位置见 [config/README.md](config/README.md)。
 
