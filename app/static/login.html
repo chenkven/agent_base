@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录或注册 · Agent 底座</title>
+  <link rel="stylesheet" href="/static/site.css?v=site-admin-1">
+  <link rel="stylesheet" href="/static/workbench.css?v=ui-2">
+  <link rel="prefetch" href="/static/chat.js?v=ui-2" as="script">
+  <script src="/static/login.js?v=entry-fast-3" defer></script>
+</head>
+<body class="auth-page">
+  <div class="auth-layout">
+    <section class="auth-intro" aria-label="产品介绍">
+      <div class="brand-mark">✦</div>
+      <p class="eyebrow">POWERED BY DEEPSEEK HARNESS</p>
+      <h1>一个工作区，<br>连接你的 Agent。</h1>
+      <p>在独立的会话中使用模型、Prompt、Skill 和 MCP。每个账号都可以管理自己的能力，管理员负责公共配置与授权。</p>
+      <div class="feature-line"><span>01</span> 多模型会话 <small>MODEL</small></div>
+      <div class="feature-line"><span>02</span> 个人能力中心 <small>CAPABILITY</small></div>
+      <div class="feature-line"><span>03</span> 权限与协作 <small>CONTROL</small></div>
+    </section>
+    <main class="auth-card">
+      <div class="auth-card-head">
+        <span class="small-mark">✦</span>
+        <p>欢迎回到 Agent 工作区</p>
+        <h2 id="auth-title">登录账号</h2>
+      </div>
+      <div class="tabs" role="tablist" aria-label="账号操作">
+        <button id="tab-login" type="button" role="tab" aria-selected="true">登录</button>
+        <button id="tab-register" type="button" role="tab" aria-selected="false">注册</button>
+      </div>
+      <form id="login-form">
+        <label for="login-username">用户名</label>
+        <input id="login-username" name="username" autocomplete="username" required autofocus>
+        <label for="login-password">密码</label>
+        <div class="password-field"><input id="login-password" name="password" type="password" autocomplete="current-password" required><button type="button" class="password-toggle" data-password-toggle="login-password" aria-label="显示密码" aria-pressed="false">显示</button></div>
+        <button class="primary-button" type="submit">进入会话 <span aria-hidden="true">→</span></button>
+      </form>
+      <form id="register-form" hidden>
+        <label for="register-username">用户名</label>
+        <input id="register-username" name="username" pattern="[A-Za-z0-9_-]{1,32}" maxlength="32" autocomplete="username" required>
+        <p class="field-note">1–32 位字母、数字、下划线或连字符</p>
+        <label for="register-password">密码</label>
+        <div class="password-field"><input id="register-password" name="password" type="password" minlength="6" maxlength="128" autocomplete="new-password" required><button type="button" class="password-toggle" data-password-toggle="register-password" aria-label="显示密码" aria-pressed="false">显示</button></div>
+        <label for="register-confirm">确认密码</label>
+        <div class="password-field"><input id="register-confirm" name="confirm-password" type="password" minlength="6" maxlength="128" autocomplete="new-password" required><button type="button" class="password-toggle" data-password-toggle="register-confirm" aria-label="显示密码" aria-pressed="false">显示</button></div>
+        <button class="primary-button" type="submit">创建普通用户账号 <span aria-hidden="true">→</span></button>
+        <p class="field-note">注册后需管理员启用，才能登录并使用 Agent。</p>
+      </form>
+      <p id="auth-result" class="auth-result" role="status" aria-live="polite"></p>
+    </main>
+  </div>
+</body>
+</html>

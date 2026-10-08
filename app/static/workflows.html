@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>工作流编排 · Agent 底座</title>
+  <link rel="stylesheet" href="/static/builder.css?v=1">
+  <script src="/static/workflows.js?v=2" defer></script>
+</head>
+<body>
+<div class="page">
+  <header class="top"><div><p class="eyebrow">Agent Base / Workflow</p><h1>工作流编排</h1><p class="muted">按顺序组合 Agent、MCP 工具和已安装的 DSH 插件工具。</p></div><a class="back" href="/app">返回会话</a></header>
+  <div class="layout">
+    <aside class="panel"><h2>我的工作流</h2><button id="new-workflow" class="primary" type="button">＋ 新建工作流</button><div id="workflow-list" class="side-list"></div></aside>
+    <main class="stack">
+      <section class="panel"><h2>定义</h2><div class="form-grid"><label>名称<input id="workflow-name" maxlength="80" placeholder="例如：检索并生成摘要"></label><label>DSH 引擎<select id="workflow-engine"></select></label></div><label style="margin-top:14px">说明<input id="workflow-description" maxlength="500" placeholder="这个工作流完成什么任务"></label><p class="hint">切换引擎后会检查插件工具是否在该版本可用。每次运行固定使用所选引擎。</p></section>
+      <section class="panel"><div class="top" style="margin-bottom:0"><div><h2>执行步骤</h2><p class="hint">上一步输出会作为下一步输入；参数可使用 {{input}}、{{previous}}、{{step1}} 等占位符。</p></div><button id="add-step" class="secondary" type="button">＋ 添加步骤</button></div><div id="steps"></div><div class="actions"><button id="save-workflow" class="primary" type="button">保存工作流</button><button id="delete-workflow" class="danger" type="button" hidden>删除</button></div><p id="editor-status" role="status" class="muted"></p></section>
+      <section class="panel"><h2>运行与记录</h2><div id="run-model-fields"><div class="form-grid"><label>模型厂家<select id="run-provider"></select></label><label>模型<select id="run-model"></select></label></div><label style="margin-top:14px">该厂家的 API Key<input id="run-key" type="password" autocomplete="off" placeholder="普通用户请填写自己的 Key；不会保存到工作流"></label></div><p id="mcp-only-note" class="hint" hidden>当前只有 MCP 工具步骤，运行时无需模型或 API Key。</p><label style="margin-top:14px">任务输入<textarea id="run-input" rows="3" maxlength="4000" placeholder="输入要处理的任务"></textarea></label><div class="actions"><button id="run-workflow" class="primary" type="button">运行工作流</button></div><p id="run-status" role="status" class="muted"></p><div id="run-steps"></div><div id="run-output" class="result" hidden></div><h3 style="margin-top:22px">最近运行</h3><div id="run-history" class="side-list"></div></section>
+    </main>
+  </div>
+</div>
+</body>
+</html>

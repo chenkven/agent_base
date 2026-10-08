@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DSH 引擎管理 · Agent 底座</title>
+  <link rel="stylesheet" href="/static/builder.css?v=1">
+  <script src="/static/engines.js?v=1" defer></script>
+</head>
+<body><div class="page">
+  <header class="top"><div><p class="eyebrow">Agent Base / Runtime</p><h1>DSH 引擎管理</h1><p class="muted">查看服务器已配置的运行时与插件工具。只有已安装并启用的版本能在会话和工作流中选择。</p></div><a class="back" href="/app">返回会话</a></header>
+  <main class="panel"><h2>引擎目录</h2><div id="engine-list"></div><p class="hint">新增版本需先在服务器安装对应 DSH，再由运维编辑 config/engines.json。网页不会安装可执行文件，也不会接受用户填写的程序路径。</p><p id="engine-status" role="status"></p></main>
+</div></body>
+</html>

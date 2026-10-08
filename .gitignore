@@ -3,6 +3,7 @@
 .env
 .harness/
 .harness-web/
+.service-state/
 workspace-web/
 __pycache__/
 *.py[cod]

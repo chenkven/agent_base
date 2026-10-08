@@ -3,97 +3,199 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Agent 底座演示</title>
-  <style>
-    :root { font-family: system-ui, sans-serif; color: #182234; background: #f4f7fb; }
-    body { margin: 0; padding: 24px; }
-    main { max-width: 760px; margin: auto; background: white; border-radius: 16px; padding: 24px; box-shadow: 0 8px 32px #18223412; }
-    h1 { margin: 0 0 6px; font-size: 24px; }
-    p { margin: 0 0 20px; color: #596579; }
-    label { display: block; margin: 12px 0 6px; font-weight: 600; }
-    input, textarea { box-sizing: border-box; width: 100%; padding: 11px; border: 1px solid #c8d0dd; border-radius: 8px; font: inherit; }
-    textarea { min-height: 100px; resize: vertical; }
-    button { margin-top: 12px; background: #2659cb; color: white; border: 0; border-radius: 8px; padding: 10px 18px; font: inherit; cursor: pointer; }
-    button:disabled { opacity: .55; cursor: wait; }
-    #new-chat { background: #e9eef8; color: #182234; margin-left: 8px; }
-    #messages { margin-top: 20px; display: grid; gap: 12px; }
-    .message { white-space: pre-wrap; overflow-wrap: anywhere; padding: 12px; border-radius: 10px; background: #f2f5fa; }
-    .message.user { background: #e9f0ff; }
-    .message.error { background: #fff0ef; color: #a1271f; }
-    .who { font-weight: 700; margin-bottom: 5px; }
-    #status { margin-top: 10px; min-height: 22px; color: #596579; }
-  </style>
+  <title>AI 会话 · Agent 底座</title>
+  <link rel="stylesheet" href="/static/site.css?v=site-admin-1">
+  <link rel="stylesheet" href="/static/workbench.css?v=engine-workflow-1">
+  <script src="/static/chat.js?v=engine-workflow-1" defer></script>
 </head>
-<body>
-  <main>
-    <h1>Agent 底座演示</h1>
-    <p>输入访问口令后即可与 Agent 对话。口令仅在当前页面内存中使用。</p>
-    <form id="chat-form">
-      <label for="token">访问口令</label>
-      <input id="token" type="password" autocomplete="off" required>
-      <label for="message">消息</label>
-      <textarea id="message" maxlength="4000" required placeholder="例如：你好，请介绍一下你能做什么"></textarea>
-      <button id="send" type="submit">发送</button>
-      <button id="new-chat" type="button">新会话</button>
-    </form>
-    <div id="status" role="status" aria-live="polite"></div>
-    <div id="messages" aria-live="polite"></div>
-  </main>
-  <script>
-    const form = document.getElementById("chat-form");
-    const token = document.getElementById("token");
-    const message = document.getElementById("message");
-    const send = document.getElementById("send");
-    const status = document.getElementById("status");
-    const messages = document.getElementById("messages");
-    let sessionId = null;
+<body class="chat-page">
+  <div id="app" class="app-shell" hidden>
+    <aside class="sidebar">
+      <div class="sidebar-top"><div class="brand-mark">✦</div><div><strong>Agent 底座</strong><small>POWERED BY DSH</small></div></div>
+      <button id="new-chat" class="new-chat-button" type="button"><span aria-hidden="true">＋</span> 新会话</button>
+      <button id="mobile-history-toggle" class="sidebar-action mobile-history-toggle" type="button" aria-expanded="false" aria-controls="chat-history"><span class="nav-glyph" aria-hidden="true">☷</span> 历史会话</button>
+      <div class="sidebar-label">工作区 <span>历史会话</span></div>
+      <p id="history-note" class="history-note">历史仅保存在本机浏览器</p>
+      <div id="chat-history" class="chat-history" aria-label="历史会话"></div>
+      <button id="capabilities-trigger" class="sidebar-action" type="button"><span class="nav-glyph" aria-hidden="true">◇</span> 我的能力中心 <span class="nav-arrow" aria-hidden="true">↗</span></button>
+      <button id="admin-trigger" class="sidebar-action" type="button" hidden><span class="nav-glyph" aria-hidden="true">▦</span> 管理工作台 <span class="nav-arrow" aria-hidden="true">↗</span></button>
+      <a class="sidebar-action" href="/workflows">工作流编排 <span class="nav-arrow" aria-hidden="true">→</span></a>
+      <a id="engine-management-link" class="sidebar-action" href="/engines" hidden>DSH 引擎管理 <span class="nav-arrow" aria-hidden="true">→</span></a>
+      <div class="sidebar-account"><div class="avatar" id="avatar">A</div><div><strong id="user-name"></strong><small id="user-role"></small></div></div>
+      <button id="logout" class="sidebar-action logout-action" type="button"><span class="nav-glyph" aria-hidden="true">↪</span> 退出登录</button>
+    </aside>
+    <main class="chat-main">
+      <header class="chat-header"><div class="header-identity"><span class="header-icon" aria-hidden="true">✦</span><div><p class="eyebrow">WORKSPACE / CONVERSATION</p><h1>AI 会话</h1></div></div><div class="chat-header-actions"><span id="connection-label" class="connection-label">已连接</span><button id="mobile-settings-toggle" class="mobile-panel-button" type="button" aria-expanded="false" aria-controls="api-key-panel">模型设置</button><button id="mobile-inspector-toggle" class="mobile-panel-button" type="button" aria-expanded="false" aria-controls="agent-inspector">配置与轨迹</button></div></header>
+      <section id="api-key-panel" class="api-key-panel" hidden>
+        <div class="panel-title"><div><p class="eyebrow">SESSION CONFIG</p><h2>模型与密钥</h2></div><button id="close-settings" class="icon-button" type="button" aria-label="关闭模型设置">×</button></div>
+        <div class="model-controls">
+          <div><label for="agent-select">Agent</label><select id="agent-select"></select></div>
+          <div><label for="dsh-engine">DSH 引擎</label><select id="dsh-engine"></select></div>
+          <div><label for="model-provider">模型厂家</label><select id="model-provider"><option value="deepseek-official">DeepSeek</option><option value="qwen-bailian">千问（阿里云百炼·北京）</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="moonshotai">Kimi（月之暗面）</option><option value="zai">智谱 GLM</option></select></div>
+          <div><label for="model-preset">可选模型</label><select id="model-preset"></select><input id="model-id" autocomplete="off" spellcheck="false" aria-label="模型 ID" hidden></div>
+          <div><label for="model-api-key">该厂家的 API Key</label><input id="model-api-key" type="password" autocomplete="off" spellcheck="false" placeholder="填写你自己的 API Key"></div>
+        </div>
+        <p id="model-hint">普通用户必须填写自己的 API Key。切换厂家、模型或 Key 后，请先点“新会话”。</p>
+        <div id="agent-capabilities" class="agent-capabilities" aria-live="polite">正在读取 Agent 能力…</div>
+      </section>
+      <div class="conversation-layout">
+        <div class="conversation-body">
+          <div id="chat-scroll" class="chat-scroll">
+          <div id="welcome" class="welcome"><div class="welcome-icon">✦</div><p class="eyebrow">YOUR AI WORKSPACE</p><h2>今天想完成什么？</h2><p>选择 Agent，描述任务。已绑定的规则、Skill 与 MCP 会随任务加载。</p><div class="starter-grid" aria-label="示例提问"><button class="starter-card" type="button" data-prompt="请介绍一下你能做什么，并给我一个使用示例。"><span class="starter-symbol" aria-hidden="true">✧</span><strong>了解 Agent</strong><small>看看当前助手的能力</small></button><button class="starter-card" type="button" data-prompt="请帮我把这个任务拆成清晰的步骤，并指出需要准备的信息。"><span class="starter-symbol" aria-hidden="true">≡</span><strong>拆解任务</strong><small>从目标到执行步骤</small></button><button class="starter-card" type="button" data-prompt="请查看当前可用的 Skill 和 MCP 工具，并说明适合完成什么任务。"><span class="starter-symbol" aria-hidden="true">◇</span><strong>探索能力</strong><small>查看 Skill 与 MCP</small></button></div></div>
+            <div id="messages" class="messages" aria-live="polite"></div>
+          </div>
+          <div class="composer-wrap"><div class="composer-meta"><span id="active-agent-label">正在读取 Agent…</span><span id="active-model-label">正在读取模型…</span><button id="open-settings-inline" type="button">更改</button></div><form id="chat-form" class="composer"><label class="sr-only" for="message">发送给 Agent 的消息</label><textarea id="message" rows="2" maxlength="4000" required placeholder="向 Agent 提问…"></textarea><button id="send" type="submit" aria-label="发送消息">↑</button></form><p id="status" class="composer-note" role="status" aria-live="polite">Enter 发送 · Shift + Enter 换行</p></div>
+        </div>
+        <aside id="agent-inspector" class="agent-inspector" aria-label="当前 Agent 的规则和能力">
+          <div class="inspector-head"><div><p class="eyebrow">AGENT CONFIG</p><h2 id="inspector-agent-name">Agent 配置</h2><small>规则、能力与本轮运行记录</small></div><button id="close-inspector" class="icon-button" type="button" aria-label="关闭配置与轨迹">×</button></div>
+          <section class="inspector-section"><h3>明确规则</h3><div id="agent-rules" class="inspector-list">正在读取…</div></section>
+          <section class="inspector-section"><h3>可用 Skill</h3><div id="agent-skills" class="inspector-list">正在读取…</div></section>
+          <section class="inspector-section"><h3>MCP 服务与工具</h3><div id="agent-mcps" class="inspector-list">正在读取…</div><p class="inspector-caption">DSH 成功连接后，工具会注册为 mcp__服务名__工具名。</p><div id="agent-tools" class="inspector-list">发送消息后显示本轮实际可用的 MCP 工具。</div></section>
+          <section class="inspector-section"><h3>本轮调用</h3><div id="agent-trace" class="inspector-list">发送消息后显示 DSH 的工具调用记录。</div></section>
+        </aside>
+      </div>
+    </main>
 
-    function addMessage(who, content, kind) {
-      const box = document.createElement("div");
-      box.className = "message " + kind;
-      const heading = document.createElement("div");
-      heading.className = "who";
-      heading.textContent = who;
-      const text = document.createElement("div");
-      text.textContent = content;
-      box.append(heading, text);
-      messages.append(box);
-    }
+  <dialog id="api-key-dialog" class="api-key-dialog" aria-labelledby="api-key-dialog-title">
+    <div class="key-dialog-icon" aria-hidden="true">🔑</div>
+    <h2 id="api-key-dialog-title">先填写 API Key</h2>
+    <p>使用 <strong id="api-key-provider-name"></strong> 聊天，需要填写该厂家的 API Key。请在页面上方输入你自己的 Key，再发送消息。</p>
+    <p class="key-dialog-note">Key 不会保存在历史会话中。</p>
+    <button id="api-key-confirm" type="button" class="primary-button">去填写 API Key <span aria-hidden="true">→</span></button>
+  </dialog>
 
-    document.getElementById("new-chat").addEventListener("click", () => {
-      sessionId = null;
-      messages.replaceChildren();
-      status.textContent = "已开始新会话";
-      message.focus();
-    });
-
-    form.addEventListener("submit", async (event) => {
-      event.preventDefault();
-      const prompt = message.value.trim();
-      if (!prompt) return;
-      addMessage("你", prompt, "user");
-      message.value = "";
-      send.disabled = true;
-      status.textContent = "Agent 正在处理…";
-      try {
-        const response = await fetch("/api/chat", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "X-Access-Token": token.value },
-          body: JSON.stringify({ message: prompt, session_id: sessionId })
-        });
-        const result = await response.json();
-        if (!response.ok) throw new Error(result.detail || `请求失败 (${response.status})`);
-        sessionId = result.session_id;
-        addMessage("Agent", result.answer, "agent");
-        status.textContent = "完成";
-      } catch (error) {
-        addMessage("错误", error.message, "error");
-        status.textContent = "请求失败";
-      } finally {
-        send.disabled = false;
-        message.focus();
-      }
-    });
-  </script>
+  <section id="admin-dialog" class="admin-dialog" aria-labelledby="admin-title" hidden>
+    <div class="dialog-head"><div><p class="eyebrow">ADMIN WORKSPACE</p><h2 id="admin-title">管理工作台</h2></div><button id="close-admin" class="secondary-button" type="button">返回会话</button></div>
+    <div id="admin-result" class="admin-result" role="status" aria-live="polite"></div>
+    <div class="admin-workspace">
+      <nav class="admin-nav" aria-label="管理功能">
+        <p>访问控制</p>
+        <button type="button" data-admin-tab="users">用户管理</button>
+        <button type="button" data-admin-tab="grants">Agent 授权</button>
+        <p>运行配置</p>
+        <button type="button" data-admin-tab="models">模型目录</button>
+        <button type="button" data-admin-tab="agents">Agent 管理</button>
+        <p>能力中心</p>
+        <button type="button" data-admin-tab="prompt">Prompt</button>
+        <button type="button" data-admin-tab="skill">Skill</button>
+        <button type="button" data-admin-tab="mcp">MCP</button>
+        <button type="button" data-admin-tab="assign">能力分配</button>
+        <button type="button" data-admin-tab="mcp-review">用户 MCP 审核</button>
+      </nav>
+      <div class="admin-content">
+        <section class="admin-view" data-admin-view="users" aria-label="用户管理">
+          <h3>用户管理</h3>
+          <p class="dialog-description">新注册用户需要启用后才能登录。删除账号会立刻撤销登录并从列表移除。</p>
+          <div id="users" class="user-list"></div>
+          <form id="reset-password-form" class="reset-form">
+            <h4>重置用户密码</h4>
+            <div class="reset-grid"><div><label for="reset-user-id">用户名</label><input id="reset-user-id" required autocomplete="off"></div><div><label for="reset-password">新密码（至少 6 位）</label><input id="reset-password" type="password" minlength="6" maxlength="128" required autocomplete="new-password"></div></div>
+            <button type="submit" class="secondary-button">重置密码</button>
+          </form>
+        </section>
+        <section class="admin-view" data-admin-view="grants" aria-label="Agent 授权" hidden>
+          <h3>Agent 授权</h3>
+          <p class="dialog-description">指定普通用户可以使用哪些 Agent。</p>
+          <form id="agent-grant-form" class="reset-form">
+            <div class="reset-grid"><div><label for="grant-user">普通用户</label><select id="grant-user" required></select></div><div><label for="grant-agent">Agent</label><select id="grant-agent" required></select></div></div>
+            <label><input id="grant-enabled" type="checkbox" checked> 允许使用</label>
+            <button type="submit" class="secondary-button">保存授权</button>
+            <p id="grant-list"></p>
+          </form>
+        </section>
+        <section class="admin-view" data-admin-view="models" aria-label="模型目录" hidden>
+          <h3>模型目录</h3>
+          <p class="dialog-description">新增模型后才可在聊天页选择；关闭“普通用户可用”可以只让管理员调用。</p>
+          <form id="model-form" class="reset-form">
+            <div class="reset-grid"><div><label for="manage-provider">厂家</label><select id="manage-provider"><option value="deepseek-official">DeepSeek</option><option value="qwen-bailian">千问</option><option value="openai">OpenAI</option><option value="anthropic">Anthropic</option><option value="moonshotai">Kimi</option><option value="zai">智谱 GLM</option></select></div><div><label for="manage-model">模型 ID</label><input id="manage-model" required maxlength="128"></div></div>
+            <label><input id="manage-model-enabled" type="checkbox" checked> 启用模型</label>
+            <label><input id="manage-model-users" type="checkbox" checked> 普通用户可用</label>
+            <button type="submit" class="secondary-button">保存模型</button>
+          </form>
+          <h4>已有模型</h4><div id="model-list" class="user-list"></div>
+        </section>
+        <section class="admin-view" data-admin-view="agents" aria-label="Agent 管理" hidden>
+          <h3>Agent 管理</h3>
+          <p class="dialog-description">设置 Agent 的基本指令，并可指定协作 Agent。</p>
+          <form id="agent-form" class="reset-form">
+            <div class="reset-grid"><div><label for="manage-agent-id">Agent ID</label><input id="manage-agent-id" required maxlength="32" placeholder="例如 reviewer"></div><div><label for="manage-agent-name">显示名称</label><input id="manage-agent-name" required maxlength="80"></div></div>
+            <label for="manage-agent-instructions">Agent 基础指令</label><textarea id="manage-agent-instructions" maxlength="8000" rows="3"></textarea>
+            <label for="manage-agent-delegate">协作 Agent ID（可留空）</label><input id="manage-agent-delegate" maxlength="32" placeholder="例如 reviewer">
+            <label><input id="manage-agent-enabled" type="checkbox" checked> 启用 Agent</label>
+            <button type="submit" class="secondary-button">保存 Agent</button>
+          </form>
+          <h4>已有 Agent</h4><div id="agent-list" class="user-list"></div>
+        </section>
+        <section class="admin-view" data-admin-view="capability" aria-label="能力管理" hidden>
+          <h3 id="capability-title">Prompt</h3>
+          <p id="capability-description" class="dialog-description"></p>
+          <form id="capability-form" class="reset-form">
+            <div class="reset-grid"><div><label for="capability-id">能力 ID</label><input id="capability-id" required maxlength="32" placeholder="例如 review_prompt"></div><div class="capability-kind-field"><label for="capability-kind">类型</label><select id="capability-kind"><option value="prompt">Prompt</option><option value="skill">Skill</option><option value="mcp">MCP</option></select></div></div>
+            <label for="capability-name">名称/描述</label><input id="capability-name" required maxlength="80">
+            <div id="capability-content-field"><label id="capability-content-label" for="capability-content">Prompt 内容</label><textarea id="capability-content" maxlength="16000" rows="5"></textarea></div>
+            <div id="capability-endpoint-field" hidden><label for="capability-endpoint">MCP 服务 URL</label><input id="capability-endpoint" type="url" maxlength="2048" placeholder="https://example.com/mcp"></div>
+            <label><input id="capability-enabled" type="checkbox" checked> 启用能力</label>
+            <button id="capability-submit" type="submit" class="secondary-button">保存 Prompt</button>
+          </form>
+          <h4 id="capability-list-title">已有 Prompt</h4><div id="capability-list" class="user-list"></div>
+        </section>
+        <section class="admin-view" data-admin-view="assign" aria-label="能力分配" hidden>
+          <h3>能力分配</h3>
+          <p class="dialog-description">Prompt、Skill、MCP 只有分配给 Agent 后才会生效。</p>
+          <form id="capability-assign-form" class="reset-form">
+            <div class="reset-grid"><div><label for="assign-agent">Agent</label><select id="assign-agent" required></select></div><div><label for="assign-capability">能力</label><select id="assign-capability" required></select></div></div>
+            <label><input id="assign-enabled" type="checkbox" checked> 分配</label>
+            <button type="submit" class="secondary-button">保存分配</button>
+            <p id="assign-list"></p>
+          </form>
+        </section>
+        <section class="admin-view" data-admin-view="mcp-review" aria-label="用户 MCP 审核" hidden>
+          <h3>用户 MCP 审核</h3>
+          <p class="dialog-description">查看用户提交的 MCP 地址。批准后，仅该用户在已绑定的 Agent 中可以使用；修改地址会重新进入待审核状态。</p>
+          <div id="user-mcp-review-list" class="user-list"></div>
+        </section>
+      </div>
+    </div>
+  </section>
+  <section id="my-capabilities-workspace" class="admin-dialog" aria-labelledby="my-cap-title" hidden>
+    <div class="dialog-head"><div><p class="eyebrow">MY CAPABILITIES</p><h2 id="my-cap-title">我的能力中心</h2></div><button id="close-my-capabilities" class="secondary-button" type="button">返回会话</button></div>
+    <div id="my-cap-result" class="admin-result" role="status" aria-live="polite"></div>
+    <div class="admin-workspace">
+      <nav class="admin-nav" aria-label="个人能力功能">
+        <p>我的能力</p>
+        <button type="button" data-my-tab="prompt">Prompt</button>
+        <button type="button" data-my-tab="skill">Skill</button>
+        <button type="button" data-my-tab="mcp">MCP</button>
+        <p>使用范围</p>
+        <button type="button" data-my-tab="assign">绑定 Agent</button>
+      </nav>
+      <div class="admin-content">
+        <section class="admin-view" data-my-view="catalog">
+          <h3 id="my-cap-kind-title">我的 Prompt</h3>
+          <p id="my-cap-description" class="dialog-description"></p>
+          <form id="my-cap-form" class="reset-form">
+            <div class="reset-grid"><div><label for="my-cap-id">能力 ID</label><input id="my-cap-id" required maxlength="32" placeholder="例如 my-prompt"></div><div><label for="my-cap-name">名称</label><input id="my-cap-name" required maxlength="80"></div></div>
+            <div id="my-cap-content-field"><label for="my-cap-content">内容</label><textarea id="my-cap-content" maxlength="16000" rows="6"></textarea></div>
+            <div id="my-cap-endpoint-field" hidden><label for="my-cap-endpoint">MCP 服务 URL</label><input id="my-cap-endpoint" type="url" maxlength="2048" placeholder="https://example.com/mcp"></div>
+            <label><input id="my-cap-enabled" type="checkbox" checked> 启用能力</label>
+            <button id="my-cap-submit" type="submit" class="secondary-button">保存 Prompt</button>
+            <button id="my-cap-new" type="button" class="secondary-button">新建 / 清空</button>
+          </form>
+          <h4 id="my-cap-list-title">已有 Prompt</h4><div id="my-cap-list" class="user-list"></div>
+        </section>
+        <section class="admin-view" data-my-view="assign" hidden>
+          <h3>绑定 Agent</h3>
+          <p class="dialog-description">把自己的能力绑定到已获授权的 Agent。Prompt 和 Skill 保存后即可使用；MCP 须经管理员审核地址后生效。</p>
+          <form id="my-assign-form" class="reset-form">
+            <div class="reset-grid"><div><label for="my-assign-agent">Agent</label><select id="my-assign-agent" required></select></div><div><label for="my-assign-capability">我的能力</label><select id="my-assign-capability" required></select></div></div>
+            <label><input id="my-assign-enabled" type="checkbox" checked> 绑定</label>
+            <button type="submit" class="secondary-button">保存绑定</button>
+            <p id="my-assign-list"></p>
+          </form>
+        </section>
+      </div>
+    </div>
+  </section>
+  </div>
 </body>
 </html>

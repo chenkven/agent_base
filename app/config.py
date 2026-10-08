@@ -19,6 +19,7 @@ class AgentConfig:
     harness_home: Path
     patches: tuple[str, ...]
     has_api_key: bool
+    dsh_bin: str | None = None
 
     @classmethod
     def load(cls) -> "AgentConfig":

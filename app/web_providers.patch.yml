@@ -1,0 +1,39 @@
+# The public chat profile adds only catalog-backed providers. A user's key is
+# injected into that user's isolated Harness process as USER_MODEL_API_KEY.
+- insert:
+    - id: llm-pi-ai
+      name: '@deepseek-ai/dsh-llm-pi-ai'
+      config:
+        providers:
+          openai:
+            apiKeyEnv: USER_MODEL_API_KEY
+          anthropic:
+            apiKeyEnv: USER_MODEL_API_KEY
+          moonshotai:
+            apiKeyEnv: USER_MODEL_API_KEY
+          zai:
+            apiKeyEnv: USER_MODEL_API_KEY
+          qwen-bailian:
+            displayName: 千问（阿里云百炼·北京）
+            apiKeyEnv: USER_MODEL_API_KEY
+            api: openai-completions
+            baseURL: https://dashscope.aliyuncs.com/compatible-mode/v1
+            compat:
+              supportsDeveloperRole: false
+              maxTokensField: max_tokens
+            models:
+              - id: qwen3.8-max
+              - id: qwen3.8-flash
+              - id: qwen3.7-max
+              - id: qwen3.7-plus
+              - id: qwen3.7-flash
+              - id: qwen3.6-plus
+              - id: qwen3.6-flash
+              - id: qwen3.5-plus
+              - id: qwen3.5-flash
+              - id: qwen3-max
+              - id: qwen-plus
+              - id: qwen-flash
+              - id: qwen-turbo
+              - id: qwen3-coder-plus
+              - id: qwen3-coder-flash
