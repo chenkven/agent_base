@@ -1,134 +1,104 @@
 # DeepSeek Harness Agent 底座
 
-网页权限的配置与测试见 [PERMISSIONS.md](PERMISSIONS.md)；模型、Agent 和能力中心见 [PLATFORM.md](PLATFORM.md)；用 DBeaver 连接 MySQL 见 [MYSQL.md](MYSQL.md)；本机花生壳映射的启动方式见 [LOCAL_TUNNEL.md](LOCAL_TUNNEL.md)。
+这是一个基于 [DeepSeek Harness Python SDK](https://deepseek-harness.github.io/deepseek-harness/en/guide/python-sdk) 的可复用 Agent 项目。它提供命令行入口和 FastAPI 网页：DSH 负责模型与工具调用，本项目负责账号权限、模型目录、能力配置、会话管理和工作流编排。网页使用独立的 `sdk-minimal` profile，并关闭 shell 工具。
 
-这是一个方便复用的 Python Agent 项目，命令行和网页服务都调用[DeepSeek Harness 官方 Python SDK](https://deepseek-harness.github.io/deepseek-harness/en/guide/python-sdk)。命令行使用 `sdk` profile；网页演示使用独立的 `sdk-minimal` profile，并关闭 shell 工具。网页支持选择已配置的 DSH 引擎，并提供逐步执行的工作流编排；安装新版本、插件兼容性及数据库迁移见 [DSH 引擎与工作流说明](ENGINE_WORKFLOW.md)。
+## 当前能力
 
-## 给用户使用的网页服务
+| 模块 | 实现方式 |
+| --- | --- |
+| 账号与权限 | MySQL 保存账号和登录会话。用户注册后由管理员启用；服务端校验模型、Agent、能力及会话归属。 |
+| 模型 | 可配置 DeepSeek、千问（百炼北京地域）、OpenAI、Anthropic、Kimi 和智谱 GLM 的模型目录。普通用户填写所选厂家的个人 API Key。 |
+| 能力中心 | 管理员配置公共 Prompt、Skill、MCP；用户管理自己的能力，并绑定到有权使用的 Agent。个人 MCP 地址需管理员审核。 |
+| 多 Agent | 主 Agent 可配置一个协作 Agent。网页先运行协作任务，再把结果交给主 Agent 汇总。 |
+| DSH 引擎 | 聊天及工作流可选择已登记且已安装的 DSH；每个会话固定使用创建时的引擎。 |
+| 工作流 | 每人可保存自己的步骤列表，顺序执行 Agent、MCP 工具或已登记的 DSH 插件工具，并查看每步记录。 |
+| 历史会话 | 消息保存在 MySQL；服务重启后可用最近已完成的文字对话重建上下文并继续聊天。 |
 
-本机启动（PowerShell，当前位置为项目根目录）：
+**当前只配置了 `deepseek-harness-sdk==0.1.5rc1`。**引擎管理页展示已登记版本及状态，不在网页中安装 DSH。多 Agent 协作和步骤列表工作流由本项目编排，目前不是 DSH 原生 subagent 或原生 Workflow。Prompt 与 Agent 规则由应用层加入模型输入；Skill、MCP 通过 DSH 补丁加载。实现边界见 [模型、Agent 与能力中心](PLATFORM.md)和 [引擎与工作流](ENGINE_WORKFLOW.md)。
+
+## 本地运行
+
+项目使用 Python 3.12（见 `.python-version`）和 MySQL 8。在 Windows PowerShell 中进入项目根目录：
 
 ```powershell
+python -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+Copy-Item .env.example .env
 ```
 
-先在本机 `.env` 中设置供管理员默认聊天和命令行使用的 `DEEPSEEK_API_KEY`，以及自己生成的 `SERVICE_ACCESS_TOKEN`。普通网页用户登录后选择模型厂家、模型 ID，并填写该厂家的个人 API Key；他们的聊天请求不会使用服务器的 Key。可以用下面的命令生成管理员初始口令，复制结果填入 `.env`；不要把真实口令提交到代码仓库。
+在 `.env` 中设置 `SERVICE_ACCESS_TOKEN`，用于空数据库首次创建 `admin` 管理员。命令行或网页管理员需要使用服务器 DeepSeek Key 时，再设置 `DEEPSEEK_API_KEY`。普通网页用户在会话页填写自己的模型 Key；项目不会把它保存到 MySQL。`.env` 已被 Git 忽略。管理员初始口令可用下面的命令生成：
 
 ```powershell
 .\.venv\Scripts\python.exe -c "import secrets; print(secrets.token_urlsafe(32))"
 ```
 
-先按 [MYSQL.md](MYSQL.md) 在本机 MySQL 建库并配置 `.env`，然后启动服务：
+全新安装时，先启动本机 MySQL，在 `.env` 中临时填写 `MYSQL_SETUP_USER`、`MYSQL_SETUP_PASSWORD`（MySQL 管理员凭据），运行：
+
+```powershell
+.\.venv\Scripts\python.exe scripts\setup_mysql.py
+```
+
+脚本创建 `agent_base` 业务库、`agent_base_test` 测试库及受限的应用账号，并将应用连接信息写入 `.env`。已有旧库应由 MySQL 管理员按需执行 `mysql/` 中的迁移脚本：`migrate_foundation.sql`、`migrate_platform.sql`、`migrate_user_capabilities.sql`、`migrate_engines_workflows.sql`。建库、DBeaver 连接和迁移细节见 [MYSQL.md](MYSQL.md)。
+
+启动网页：
 
 ```powershell
 .\.venv\Scripts\python.exe -m uvicorn app.web:app --host 127.0.0.1 --port 8000
 ```
 
-若浏览器能访问网站、但聊天提示模型连接失败，先检查本机到模型 API 的连接。此 Windows 电脑在启用系统代理时，需要让启动服务的 Node 子进程使用同一代理；经过验证的临时 PowerShell 启动命令见 [LOCAL_TUNNEL.md](LOCAL_TUNNEL.md)。项目不保存代理地址，也不改变系统代理设置。
+打开 <http://127.0.0.1:8000/>，用 `admin` 和首次配置的 `SERVICE_ACCESS_TOKEN` 登录。`/ready` 返回 `{"status":"ready"}` 表示服务及所需数据库表就绪；`/health` 只检查网页进程。
 
-在本机浏览器打开 <http://127.0.0.1:8000/>。首页提供登录和普通用户注册；新注册账号需要管理员启用后才能登录。管理员首次使用用户名 `admin` 和 `SERVICE_ACCESS_TOKEN` 作为密码登录，在侧边栏的“管理工作台”中分别管理用户、Agent 授权、模型、Agent、公共 Prompt/Skill/MCP 和能力分配。每个已启用用户都有“我的能力中心”，可创建自己的 Prompt、Skill、MCP 并绑定到自己可用的 Agent；个人 MCP 地址需管理员在“用户 MCP 审核”批准后才会连接。现有数据库须先执行 [个人能力迁移 SQL](mysql/migrate_user_capabilities.sql)。会话页点“模型设置”选择 Agent、模型厂家与模型，并填写该厂家的 API Key。聊天页支持 DeepSeek、千问（阿里云百炼·北京）、OpenAI、Anthropic、Kimi 和智谱 GLM；可选模型由 MySQL 模型目录控制，管理员可增减可用模型。千问使用北京地域百炼按量计费 API Key，当前不接入 Token Plan Key；其他地域的 Key 需要配置对应地域地址。管理员选 DeepSeek 时可留空 Key 使用服务器配置。切换厂家、模型、Agent 或 Key 后先点“新会话”。页面不保存密钥，刷新后需重填，服务端在登录期间暂存对应 Harness 实例并在退出后释放。`/health` 返回 `{"status":"ok"}` 只表示网页服务已启动；能否聊天还取决于对应厂家 Key、模型权限和网络连接。`127.0.0.1` 仅供本机访问，不能作为给用户的公网地址。
+## 页面使用
 
-聊天页点“配置与轨迹”会打开 Agent 面板，显示规则、已分配 Skill、MCP 服务，以及 DSH 本轮实际注册和调用的工具。运行 `\.venv\Scripts\python.exe scripts\seed_capability_demo.py` 后，管理员可以选择“能力演示 Agent”体验 Prompt、Skill 和项目自带的只读 MCP 工具。具体提问与验收步骤见 [PLATFORM.md](PLATFORM.md)。
+1. **账号：**用户在登录页注册；管理员在“管理工作台 → 用户管理”启用账号。角色和登录校验见 [PERMISSIONS.md](PERMISSIONS.md)。
+2. **聊天：**在“模型设置”中选择 Agent、DSH 引擎、厂家和模型，填入对应 API Key。管理员选择 DeepSeek 时可使用服务器 Key。切换 Agent、引擎、厂家、模型或 Key 后先点“新会话”；旧会话仍在历史列表。
+3. **能力：**在“我的能力中心”建立个人 Prompt、Skill、MCP，并绑定到可用 Agent。管理员可维护公共能力和授权。聊天页“配置与轨迹”区分已配置的能力与本轮实际调用的工具。可运行 `\.venv\Scripts\python.exe scripts\seed_capability_demo.py` 创建演示 Agent。
+4. **工作流：**打开 `/workflows`，添加最多 8 个步骤并保存。`{{input}}`、`{{previous}}`、`{{step1}}` 等占位符可传递结果。仅含 MCP 工具的工作流无需模型 Key；包含 Agent 或插件步骤时需要可用模型和 Key。每步运行前重新检查授权，运行记录只对创建者可见。
+5. **引擎：**管理员打开 `/engines` 查看版本状态。新增版本需先独立安装，再由服务器管理员编辑 [`config/engines.json`](config/engines.json) 登记可执行文件；首次真实调用还需验证与当前 SDK 的协议兼容性。
 
-点击“新会话”后，旧对话仍在侧边栏的“历史会话”中。执行 [MYSQL.md](MYSQL.md) 的升级脚本后，新消息会保存到 MySQL，可跨浏览器和设备查看；升级前或数据库暂不可用时，页面会提示“历史仅保存在本机浏览器”，并继续使用本地缓存。升级前已有的本地历史不会自动上传。API Key 不保存在历史记录中，继续旧会话时需重新填写原厂家的 Key。服务重启后也可以打开服务端历史继续提问：服务会用最近已完成的文字对话重建上下文，最多回放最近 20 轮和约 2.4 万字符。更早的消息仍可查看，但不会全部送进模型；先前的工具运行状态不会恢复。只有本机缓存、没有服务端消息记录的旧会话无法跨重启续聊。
+当前引擎目录没有登记插件工具。工作流的插件步骤须先在对应 DSH profile 安装插件，再登记工具名；运行时会检查 DSH 轨迹，确认指定工具确实成功调用。MCP 步骤直接调用已授权服务中的指定工具。配置方法见 [ENGINE_WORKFLOW.md](ENGINE_WORKFLOW.md)。
 
-同一账号一次只处理一条聊天请求，整个网页服务最多同时运行 8 条聊天请求；多余请求会立即返回 429 或 503。Harness 启动与模型调用共享 180 秒超时，可通过 `WEB_CHAT_TIMEOUT_SECONDS` 调整。超时会关闭该账号的 Harness，建议开始新会话再试。
+历史会话保存用户和助手消息。服务重启后，网页用最近已完成的文字对话重建上下文；较早的消息仍可查看，但之前的工具运行状态不会恢复。API Key 不写入历史，刷新或续接旧会话时需重新填写。
 
-### 部署到 Render，取得公网地址
+## 命令行
 
-仓库已提供 `render.yaml` 和 `.python-version`。需要你自己的 GitHub 账号和 Render 账号：
+命令行使用 `sdk` profile 和 `.env` 的 `DEEPSEEK_API_KEY`，与网页的数据目录隔离：
 
-1. 当前项目的远程仓库在 Gitee。把项目同步到**你自己的** GitHub、GitLab 或 Bitbucket 仓库，供 Render 连接。确认 `.env`、`.venv`、`.harness` 等没有上传。
-2. 在 [Render Dashboard](https://dashboard.render.com/) 选择 **New → Blueprint**，连接该仓库，使用仓库中的 `render.yaml`。
-3. 按界面提示填写 `DEEPSEEK_API_KEY` 和 `SERVICE_ACCESS_TOKEN` 两个环境变量。管理员初始密码可用上面的 Python 命令生成；不要把 API Key 或管理员密码发给用户。
-4. 等待部署成功，打开 Render 提供的 `https://...onrender.com/` 地址，用用户名 `admin` 和管理员初始密码登录。用户可以从登录页注册普通账号；管理员在“用户管理”中启用后，再把网址交给用户。
+```powershell
+.\.venv\Scripts\python.exe main.py doctor
+.\.venv\Scripts\python.exe main.py run "请介绍一下你能做什么"
+.\.venv\Scripts\python.exe main.py chat
+```
 
-Render 免费服务闲置后可能休眠，再次打开需要等待唤醒。MySQL 版本需要配置 Render 可以访问的 MySQL 主机；本机的 `127.0.0.1` 只适用于本机和花生壳方案。`/health` 检查网页进程，`/ready` 还会检查 MySQL；Render 使用 `/ready` 作为健康检查。
+`doctor` 只检查本地配置，不调用模型。`run` 执行一次任务；`chat` 连续对话，输入 `exit` 退出。`run` 和 `chat` 可传 `--session-id` 沿用已有会话。真实模型调用可能产生费用。
 
-网页服务代码在 `app/web.py`，登录/注册页在 `app/static/login.html` 和 `app/static/login.js`，聊天及管理页在 `app/static/index.html` 和 `app/static/chat.js`，共享样式在 `app/static/site.css`，工作台样式在 `app/static/workbench.css`。`app/permissions.py` 管账号和会话；`app/platform.py` 管模型、Agent 与公共能力；`app/user_capabilities.py` 管每个账号自己的能力及 MCP 审核；`app/extensions.py` 生成每个账号和 Agent 的 DSH Skill/MCP 补丁；`app/agent.py` 创建 SDK 实例。`app/web_providers.patch.yml` 增加模型厂家，`app/web_chat.patch.yml` 关闭网页 shell。网页使用 `workspace-web/` 和 `.harness-web/`，与命令行数据隔离。命令行插件仍在 `config/*.patch.yml` 配置。
-
-网页接口的本地自动测试：
+## 测试
 
 ```powershell
 .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
-.\.venv\Scripts\python.exe -m unittest tests.test_web -v
+.\.venv\Scripts\python.exe -m unittest discover -s tests -v
 ```
 
-## 目录关系
+网页测试使用并清理**独立测试库**，不要把 `MYSQL_TEST_DATABASE` 指向业务库。完整测试包含真实 DeepSeek API 冒烟测试：配置 `DEEPSEEK_API_KEY` 后会调用模型并可能产生费用；未配置时该项跳过。只运行网页接口测试可执行 `\.venv\Scripts\python.exe -m unittest tests.test_web -v`。
 
-```text
-agent_base/
-├─ main.py             命令行入口
-├─ app/
-│  ├─ cli.py           doctor / run / chat 三个命令
-│  ├─ config.py        读取 .env，定位工作目录与扩展配置
-│  └─ agent.py         创建官方 DeepSeekHarness 实例
-├─ config/             可选的官方 Harness 配置补丁
-├─ workspace/          Agent 默认处理文件的地方
-├─ .harness/           首次运行时产生的 profile、会话等数据（自动创建）
-├─ .env.example        配置示例，不含真实密钥
-└─ requirements.txt    Python 依赖
-```
+## 代码结构
 
-调用顺序：`main.py → app/cli.py → app/config.py → app/agent.py → DeepSeek Harness SDK → 模型/工具/会话`。
+| 路径 | 职责 |
+| --- | --- |
+| `main.py`、`app/cli.py` | `doctor`、单次任务和连续命令行对话。 |
+| `app/web.py`、`app/static/` | FastAPI 接口，以及登录、聊天、引擎和工作流页面。 |
+| `app/permissions.py`、`app/platform.py`、`app/user_capabilities.py` | 账号、模型、Agent、公共及个人能力授权。 |
+| `app/engines.py`、`config/engines.json` | DSH 引擎目录、可用性检查及会话版本绑定。 |
+| `app/workflows.py`、`app/workflow_runner.py` | 工作流定义、步骤校验、执行及运行记录。 |
+| `app/extensions.py`、`app/agent.py` | 生成 DSH 能力补丁并创建 SDK 实例。 |
+| `mysql/`、`scripts/`、`tests/` | 数据库脚本、演示与维护脚本、自动测试。 |
 
-## 在 VS Code 中启动（Windows PowerShell）
+网页工作区和 DSH 数据分别位于 `workspace-web/`、`.harness-web/`；命令行使用 `workspace/`、`.harness/`。这些运行目录和 `.env` 均被 Git 忽略。扩展补丁的格式与位置见 [config/README.md](config/README.md)。
 
-要求 Python 3.10+、Git、Windows x64，以及可用的 DeepSeek API Key。当前文件夹已经建好 `.venv` 并安装依赖；你可直接从第 2 步开始。
+## 如何扩展
 
-1. 新机器首次安装：
-
-   ```powershell
-   cd D:\vscodeprojects\agent_base
-   python -m venv .venv
-   .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-   ```
-
-2. 新建自己的配置文件并填写密钥：
-
-   ```powershell
-   Copy-Item .env.example .env
-   ```
-
-   打开 `.env`，把 `DEEPSEEK_API_KEY=` 后面填成你的真实密钥。若使用官方接口，删除或注释 `DEEPSEEK_BASE_URL`；仅使用兼容代理时才设置它。`.env` 已被 `.gitignore` 排除。
-
-3. 检查安装：
-
-   ```powershell
-   .\.venv\Scripts\python.exe main.py doctor
-   ```
-
-4. 执行一个任务：
-
-   ```powershell
-   .\.venv\Scripts\python.exe main.py run "阅读 workspace 中的文件，告诉我它们的主要内容"
-   ```
-
-   连续对话：
-
-   ```powershell
-   .\.venv\Scripts\python.exe main.py chat
-   ```
-
-   程序会打印会话 ID。以后传入 `--session-id 这个ID` 可以延续该会话；不传则开启新会话。
-
-## 运行真实 API 冒烟测试
-
-在 `.env` 中填写 `DEEPSEEK_API_KEY` 后运行：
-
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -p "test_*.py" -v
-```
-
-测试会在 `workspace/` 中创建临时工作目录和独立的 Harness 数据目录，向模型发送一轮简短任务，检查会话 ID、完成状态和非空回复，结束后清理临时目录。这会产生一次 API 调用和相应费用。未配置 Key 时，测试会显示 `skipped`。
-
-## 以后如何复用
-
-- 把需要 Agent 处理的文件放入 `workspace/`。
-- 在 `.env` 中改 `AGENT_MODEL`、`AGENT_MAX_TOKENS`。`sdk` 是官方完整 profile，优先保留。
-- 在 `config/` 中加入官方格式的 `*.patch.yml`，用于增减插件或调整配置。请先读该目录说明和官方插件文档。
-- 把你自己的业务流程写在 `app/` 新模块中，然后从 `cli.py` 调用；底层 Harness 初始化放在 `agent.py`。
-
-## 注意
-
-`doctor` 只检查配置，不发送 API 请求。`run` 和 `chat` 会调用 DeepSeek API，产生相应费用。官方 Harness 仍处于开发预览阶段；它的工具可能执行命令和修改文件。先在 `workspace/` 放练习文件，并审查其权限与扩展插件。工作目录是 Agent 的默认项目目录，不能当成操作系统级隔离边界。
+- **新增 Agent：**在管理工作台创建 Agent、设置规则或协作 Agent，再给用户授权；调用入口和权限校验分别在 `app/web.py`、`app/platform.py`。
+- **新增 Prompt、Skill、MCP：**通过公共或个人能力中心创建并绑定 Agent。新增 MCP 服务须提供可从服务端访问的 Streamable HTTP 地址，个人地址还需管理员审核。
+- **新增模型：**现有厂家可在“模型目录”登记实际支持的模型 ID；接入新厂家还需更新 `app/platform.py` 的厂家允许列表、`app/agent.py` 的 Key 传递、`app/web_providers.patch.yml` 和页面选项，并验证 SDK 适配。
+- **新增 DSH 版本或插件：**在服务器安装对应运行时或插件，再更新 `config/engines.json`。插件工具需要真实调用验收，登记名称不会自动安装插件。
+- **新增工作流步骤类型：**在 `app/workflows.py` 增加定义与授权校验，在 `app/workflow_runner.py` 增加执行逻辑，并同步更新 `app/static/workflows.js` 的编辑表单。
