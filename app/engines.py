@@ -1,4 +1,4 @@
-"""Operator-controlled DSH runtime catalog and session version binding."""
+"""控制的 DSH 运行时目录和会话版本绑定."""
 
 from contextlib import closing
 from dataclasses import dataclass

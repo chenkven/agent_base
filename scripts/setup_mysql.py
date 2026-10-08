@@ -1,4 +1,4 @@
-"""One-time local MySQL setup. Reads a temporary admin login from ignored .env."""
+"""一次性本地 MySQL 配置。从被忽略的.env 文件读取临时管理员登录信息."""
 
 import os
 from pathlib import Path

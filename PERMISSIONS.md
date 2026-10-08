@@ -12,7 +12,7 @@
 
 初始化只执行一次。之后注册、启用、停用、删除和重置密码都直接写入 MySQL；确认管理员登录正常后，可从 `.env` 移除初始口令配置。接口统一使用用户名、密码登录取得会话票据，后续请求通过 `X-Session-Token` 传递票据。
 
-新部署仍需在 `.env` 中至少设置一次 `SERVICE_ACCESS_TOKEN` 以建立首个管理员账号。MySQL 配置在 `.env` 的 `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_DATABASE`、`MYSQL_USER`、`MYSQL_PASSWORD`。不要把 `.env` 或密码发给别人。给导师单独创建普通用户账号即可，勿共享管理员密码。
+新部署仍需在 `.env` 中至少设置一次 `SERVICE_ACCESS_TOKEN` 以建立首个管理员账号。MySQL 配置在 `.env` 的 `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_DATABASE`、`MYSQL_USER`、`MYSQL_PASSWORD`。不要把 `.env` 或密码发给别人。给用户单独创建普通用户账号即可，勿共享管理员密码。
 
 ## 角色区别
 

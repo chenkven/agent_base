@@ -1,4 +1,4 @@
-"""Add a non-destructive Prompt, Skill and local MCP demonstration to MySQL."""
+"""为 MySQL 增加无损的提示词、技能与本地 MCP 演示功能."""
 
 from contextlib import closing
 from pathlib import Path

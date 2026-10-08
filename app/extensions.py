@@ -1,4 +1,4 @@
-"""Turn assigned capabilities into isolated DSH patches for one Agent run."""
+"""将分配的功能转换为针对单个代理运行的隔离式 DSH 补丁."""
 
 from dataclasses import replace
 from hashlib import sha256

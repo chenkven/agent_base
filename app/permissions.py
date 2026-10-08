@@ -1,4 +1,4 @@
-"""MySQL accounts, login sessions and per-user chat ownership for the web service."""
+"""MySQL 账户、登录会话以及为网页服务提供的用户聊天权限."""
 
 from contextlib import closing
 from dataclasses import dataclass
